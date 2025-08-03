@@ -33,9 +33,9 @@ EA = sys.argv[1]
 # ディレクトリ設定
 setting = configparser.ConfigParser()
 setting.read('../utils/setting.conf')
-MT4_path = setting.get('MT4_path')
-terminal = setting.get('terminal')
-path_output = setting.get('path_output')
+MT4_path = setting.get('setting','MT4_path')
+terminal = setting.get('setting','terminal')
+path_output = setting.get('setting','path_output')
 
 if not os.path.exists(path_output+'OPT_'+EA): os.mkdir(path_output +'OPT_'+EA)
 path_output = path_output +'OPT_'+EA
