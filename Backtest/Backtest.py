@@ -1,12 +1,7 @@
 """
 MT4バックテスト実行
-・入力パラメータ部に各種条件を指定
-・最適化を実施する場合：
-　Exe_OptimizeをTrueに設定
-　事前にMT4ターミナルにて最適化条件を設定したsetファイルを作成し、保存しておく
-　（保存先はMT4_path）
-・STReportReaderとOptReportReaderをインポート
-
+ - config.iniに記載された条件にてバックテストを実行する。Terms及びSymbolsは複数条件を指定可能。
+ - 実行結果はresultフォルダ下に格納される。
 """
 
 #coding : utf-8

@@ -1,8 +1,5 @@
 
 # 処理名：ストラテジーテスターレポートの読み込み
-# 作成日：2017/2/15
-# 更新日：2020/1/2
-
 # encoding = utf-8
 
 import numpy as np
@@ -10,7 +7,6 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from datetime import datetime
 from math import fabs
-
     
 def num_chk(indata):
     try:
@@ -23,12 +19,11 @@ def timedelta_to_DHM(td):
     sec = td.total_seconds()
     return str(int(sec//86400))+'D/'+str(int(sec%86400//3600))+'H/'+str(int(sec%86400%3600//60))+'M'
 
+# バックテストレポート読み込み（最適化なし）
 class BacktestReport:
-    
     def __init__(self,filepath):
         source = open(filepath,'r')
         soup = BeautifulSoup(source,features="html.parser")
-
         # サマリテーブル読み込み
         sline = soup.findAll("table")[0].findAll("tr")
         self.summary = dict()
@@ -45,40 +40,33 @@ class BacktestReport:
         self.summary[u'モデルティック数'] = int(num_chk(sline[5].findAll("td")[3].string))
         self.summary[u'モデリング品質'] = sline[5].findAll("td")[5].string
         self.summary['Spread'] = sline[8].findAll("td")[5].string
-        
         self.summary[u'総取引数'] = int(num_chk(sline[13].findAll("td")[1].string))
         self.summary[u'取引数（売）'] = int(num_chk(sline[13].findAll("td")[3].string[:sline[13].findAll("td")[3].string.find("(")]))
         self.summary[u'取引数（買）'] = int(num_chk(sline[13].findAll("td")[5].string[:sline[13].findAll("td")[5].string.find("(")]))
-
         self.summary[u'純益'] = float(num_chk(sline[9].findAll("td")[1].string))
         self.summary[u'総利益'] = float(num_chk(sline[9].findAll("td")[3].string))
         self.summary[u'総損失'] = float(num_chk(sline[9].findAll("td")[5].string))
         self.summary[u'期待利得'] = float(num_chk(sline[10].findAll("td")[3].string))
         self.summary[u'プロフィットファクタ'] = float(num_chk(sline[10].findAll("td")[1].string))
-
         self.summary[u'最大ドローダウン（金額）'] = float(num_chk(sline[11].findAll("td")[3].string[:sline[11].findAll("td")[3].string.find("(")]))
         self.summary[u'最大ドローダウン（%）'] = float(num_chk(sline[11].findAll("td")[3].string[sline[11].findAll("td")[3].string.find("(")+1:sline[11].findAll("td")[3].string.find(")")].replace("%","")))/100
         self.summary[u'絶対ドローダウン'] = float(num_chk(sline[11].findAll("td")[1].string))
         #self.summary[u'相対ドローダウン'] = sline[11].findAll("td")[5].string
-        
         self.summary[u'勝率'] = float(num_chk(sline[14].findAll("td")[2].string[sline[14].findAll("td")[2].string.find("(")+1:sline[14].findAll("td")[2].string.find(")")].replace("%","")))/100
         self.summary[u'勝率（売）'] = float(num_chk(sline[13].findAll("td")[3].string[sline[13].findAll("td")[3].string.find("(")+1:sline[13].findAll("td")[3].string.find(")")].replace("%","")))/100
         self.summary[u'勝率（買）'] = float(num_chk(sline[13].findAll("td")[5].string[sline[13].findAll("td")[5].string.find("(")+1:sline[13].findAll("td")[5].string.find(")")].replace("%","")))/100
         self.summary[u'勝トレード数'] = int(num_chk(sline[14].findAll("td")[2].string[:sline[14].findAll("td")[2].string.find("(")-1]))
         self.summary[u'負トレード数'] = int(num_chk(sline[14].findAll("td")[4].string[:sline[14].findAll("td")[4].string.find("(")-1]))
-
         self.summary[u'最大利益'] = float(num_chk(sline[15].findAll("td")[2].string))
         self.summary[u'最大損失'] = float(num_chk(sline[15].findAll("td")[4].string))
         self.summary[u'平均利益'] = float(num_chk(sline[16].findAll("td")[2].string))
         self.summary[u'平均損失'] = float(num_chk(sline[16].findAll("td")[4].string))
-
         self.summary[u'最大連勝数'] = int(num_chk(sline[17].findAll("td")[2].string[:sline[17].findAll("td")[2].string.find("(")-1]))
         self.summary[u'最大連勝額'] = float(num_chk(sline[17].findAll("td")[2].string[sline[17].findAll("td")[2].string.find("(")+1:sline[17].findAll("td")[2].string.find(")")]))
         self.summary[u'最大連敗数'] = int(num_chk(sline[17].findAll("td")[4].string[:sline[17].findAll("td")[4].string.find("(")-1]))
         self.summary[u'最大連敗額'] = float(num_chk(sline[17].findAll("td")[4].string[sline[17].findAll("td")[4].string.find("(")+1:sline[17].findAll("td")[4].string.find(")")]))
         self.summary[u'平均連勝数'] = int(num_chk(sline[19].findAll("td")[2].string))
         self.summary[u'平均連敗数'] = int(num_chk(sline[19].findAll("td")[4].string))
-
         # 明細テーブル読み込み
         tline = soup.findAll('table')[1].findAll('tr')
         lst_no = [] #No.
@@ -139,7 +127,6 @@ class BacktestReport:
         self.trans['H'] = list([datetime.strftime(x,"%H") for x in self.trans['約定日時']])
         yobi = ["1:月","2:火","3:水","4:木","5:金","6:土","7:日"]
         self.trans['WD'] = list([yobi[x.weekday()] for x in self.trans['約定日時']])
-
     # 年次サマリ
     def trans_y(self):
         trans_y = self.trans.groupby('YYYY').count()[['決済種別']].rename(columns={'決済種別':'取引回数'})
@@ -157,9 +144,7 @@ class BacktestReport:
         trans_y['負トレード数'] = [int(x) for x in trans_y['負トレード数']]
         trans_y['最大保有期間(h)'] = [x.total_seconds()/(60*60) for x in trans_y['最大保有期間(h)']]
         trans_y['最小保有期間(h)'] = [x.total_seconds()/(60*60) for x in trans_y['最小保有期間(h)']]
-
         return trans_y
-
     # 月次サマリ
     def trans_ym(self):
         trans_ym = self.trans.groupby('YYYYMM').count()[['決済種別']].rename(columns={'決済種別':'取引回数'})
@@ -177,9 +162,7 @@ class BacktestReport:
         trans_ym['負トレード数'] = [int(x) for x in trans_ym['負トレード数']]
         trans_ym['最大保有期間(h)'] = [x.total_seconds()/(60*60) for x in trans_ym['最大保有期間(h)']]
         trans_ym['最小保有期間(h)'] = [x.total_seconds()/(60*60) for x in trans_ym['最小保有期間(h)']]
-
         return trans_ym
-
     # En時間帯別サマリ
     def trans_h(self):
         trans_h = self.trans.groupby('H').count()[['決済種別']].rename(columns={'決済種別':'取引回数'})
@@ -197,9 +180,7 @@ class BacktestReport:
         trans_h['負トレード数'] = [int(x) for x in trans_h['負トレード数']]
         trans_h['最大保有期間(h)'] = [x.total_seconds()/(60*60) for x in trans_h['最大保有期間(h)']]
         trans_h['最小保有期間(h)'] = [x.total_seconds()/(60*60) for x in trans_h['最小保有期間(h)']]
-
         return trans_h
-
     # En曜日別サマリ
     def trans_wd(self):
         trans_wd = self.trans.groupby('WD').count()[['決済種別']].rename(columns={'決済種別':'取引回数'})
@@ -217,16 +198,13 @@ class BacktestReport:
         trans_wd['負トレード数'] = [int(x) for x in trans_wd['負トレード数']]
         trans_wd['最大保有期間(h)'] = [x.total_seconds()/(60*60) for x in trans_wd['最大保有期間(h)']]
         trans_wd['最小保有期間(h)'] = [x.total_seconds()/(60*60) for x in trans_wd['最小保有期間(h)']]
-
         return trans_wd
 
-
+# バックテストレポート読み込み（最適化）
 class OptimizeReport:
-    
     def __init__(self,filepath):
         source = open(filepath,'r')
         soup = BeautifulSoup(source,features="html.parser")
-
         # サマリテーブル読み込み
         sline = soup.findAll("table")[0].findAll("tr")
         self.summary = {}
@@ -235,7 +213,6 @@ class OptimizeReport:
         self.summary[u'モデル'] = sline[2].findAll("td")[1].string
         self.summary[u'初期証拠金'] = float(num_chk(sline[3].findAll("td")[1].string))
         self.summary[u'スプレッド'] = sline[4].findAll("td")[1].string
-
         # 明細テーブル読み込み
         tline = soup.findAll('table')[1].findAll('tr')
         _cond = list()
@@ -256,9 +233,7 @@ class OptimizeReport:
             _gain.append(float(item[4].string))
             _dd_1.append(float(item[5].string))
             _dd_2.append(float(item[6].string))
-
         self.result = pd.DataFrame({'パス':_path,'条件':_cond,'損益':_pl,'総取引数':_trans,'PF':_pf,'期待利得':_gain,'DD $':_dd_1,'DD %':_dd_2})
-
         # 条件を分解
         num_conds = len(_cond[0].split('; '))
         for n in range(num_conds-1):

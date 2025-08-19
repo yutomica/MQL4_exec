@@ -1,13 +1,8 @@
 """
 MT4バックテスト実行（最適化）
-
-作成日：2017/02/10
-更新日：2022/05/06
-
-・入力パラメータ部に各種条件を指定
-・事前にMT4ターミナルにて最適化条件を設定したsetファイルを作成し、保存しておく
-　（保存先はMT4_path）
-
+ - config.iniに記載された条件にてバックテストを実行する。Terms及びSymbolsは複数条件を指定可能。
+ - MT4ターミナルにて最適化条件を設定したsetファイル（EA名.set）を作成し、保存しておく。
+ - 実行結果はresultフォルダ下に格納される。
 """
 
 #coding : utf-8
@@ -27,21 +22,23 @@ sys.path.append('../utils')
 from set_inputfile import set_inputfile_opt
 from STReportReader import OptimizeReport
 
-# 入力パラメータ
+
+## 入力パラメータ
 EA = sys.argv[1]
 
-# ディレクトリ設定
+
+## ディレクトリ設定
 setting = configparser.ConfigParser()
 setting.read('../utils/setting.conf')
 MT4_path = setting.get('setting','MT4_path')
 terminal = setting.get('setting','terminal')
 path_output = setting.get('setting','path_output')
-
 if not os.path.exists(path_output+'OPT_'+EA): os.mkdir(path_output +'OPT_'+EA)
 path_output = path_output +'OPT_'+EA
 if not os.path.exists(MT4_path+'tmpdir'): os.mkdir(MT4_path+'tmpdir')
 
-# configからテスト対象を読み込む
+
+## configからテスト対象を読み込む
 inifile = configparser.ConfigParser()
 inifile.read('./config.ini','UTF-8')
 try:
@@ -56,7 +53,8 @@ except:
     sys.exit()
 setfile_nm = EA+'.set' 
 
-# テスト期間設定
+
+## テスト期間設定
 TestPeriods = []
 dd = datetime.strptime(Time_STR,'%Y.%m.%d')
 while dd <= datetime.strptime(Time_END,'%Y.%m.%d'):
@@ -66,11 +64,23 @@ while dd <= datetime.strptime(Time_END,'%Y.%m.%d'):
     if dd_end > datetime.strptime(Time_END,'%Y.%m.%d'):break
     dd = dd_end + timedelta(1)
 
-# レポート格納ディレクトリ作成
+
+## レポート格納ディレクトリ作成
 if not os.path.exists(MT4_path+'tmpdir'):
     os.mkdir(MT4_path+'tmpdir')
 infile = MT4_path+'test_params.txt'
 
+
+## 最適化パラメータを特定
+with open(MT4_path + setfile_nm) as f:
+    lines = f.readlines()
+opt_params = list()
+for line in lines:
+    if line.find("F=1")!=-1:
+        opt_params.append(line.split(',')[0])
+
+
+## 最適化実行
 print()
 print(" ** Execute Optimization ** ")
 print(" - EA : "+EA)
@@ -87,16 +97,6 @@ print("  - From "+Time_STR+" To "+Time_END)
 for t in TestPeriods:
     print(t)
 print()
-
-# 最適化パラメータを特定
-with open(MT4_path + setfile_nm) as f:
-    lines = f.readlines()
-opt_params = list()
-for line in lines:
-    if line.find("F=1")!=-1:
-        opt_params.append(line.split(',')[0])
-
-# バックテスト（最適化）
 result_tbl = pd.DataFrame()
 for sym in Symbols:
         for trm in Terms:
@@ -118,33 +118,19 @@ for sym in Symbols:
                     result_tbl = pd.concat([result_tbl,_res_tbl])
                 except:
                     pass
-
             # 結果出力
             excel_writer = pd.ExcelWriter(path_output+"\\OPT_"+EA+"_"+sym+"_"+trm+".xlsx")
             param_columns = []
             for c in result_tbl.columns:
                 if c.find('P_')!=-1: param_columns.append(c)
-            result_tbl_columns = ['TestPeriod','Symbol','TimeFrame',u'パス',u'損益',u'総取引数',u'PF',u'期待利得',u'DD $',u'DD %'] + opt_params
             for param in opt_params:
                 result_tbl[param] = [float(x) for x in result_tbl["P_"+param]]
                 result_tbl = result_tbl.drop("P_"+param,axis=1)
-            result_tbl[result_tbl_columns].to_excel(excel_writer,sheet_name='summary')
+            outcols = opt_params + ['TestPeriod','Symbol','TimeFrame',u'損益',u'総取引数',u'PF',u'期待利得',u'DD $',u'DD %']
+            result_tbl[outcols].to_excel(excel_writer,sheet_name='summary',index=False)
             excel_writer.save()
-            
-# for col in [u'損益',u'総取引数',u'PF',u'期待利得',u'DD $',u'DD %']:
 
-#     for p in sorted(list(set(result_tbl['TestPeriod']))):
-#         _result = pd.DataFrame(
-#             index=sorted(list(set(result_tbl[opt_params[0]]))),
-#             columns=sorted(list(set(result_tbl[opt_params[1]])))
-#         )        
-#         for i in sorted(list(set(result_tbl[opt_params[0]]))):
-#             for c in sorted(list(set(result_tbl[opt_params[1]]))):
-#                 _result.loc[i,c] = result_tbl[(result_tbl['TestPeriod']==p)&(result_tbl[opt_params[0]]==i)&(result_tbl[opt_params[1]]==c)][[col]].values[0][0]
 
-#         _result = result_tbl[result_tbl['TestPeriod']==p][['損益']+opt_params]
-
-# result_tbl.groupby
-
-copy_tree(MT4_path+'tmpdir',path_output)
+## 後処理           
+# copy_tree(MT4_path+'tmpdir',path_output)
 shutil.rmtree(MT4_path+'tmpdir')
