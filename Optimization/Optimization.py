@@ -126,8 +126,18 @@ for sym in Symbols:
             for param in opt_params:
                 result_tbl[param] = [float(x) for x in result_tbl["P_"+param]]
                 result_tbl = result_tbl.drop("P_"+param,axis=1)
+            # - サマリ
+            summary = result_tbl[opt_params+[u'損益',u'総取引数',u'PF',u'期待利得']].groupby(opt_params).agg(['min','mean','max']).reset_index()
+            summary = pd.DataFrame(summary.values,columns=opt_params+[
+                u'損益_min',u'損益_mean',u'損益_max',
+                u'総取引数_min',u'総取引数_mean',u'総取引数_max',
+                u'PF_min',u'PF_mean',u'PF_max',
+                u'期待利得_min',u'期待利得_mean',u'期待利得_max',
+            ])
+            summary.to_excel(excel_writer,sheet_name='summary',index=False)
+            # - 明細
             outcols = opt_params + ['TestPeriod','Symbol','TimeFrame',u'損益',u'総取引数',u'PF',u'期待利得',u'DD $',u'DD %']
-            result_tbl[outcols].to_excel(excel_writer,sheet_name='summary',index=False)
+            result_tbl[outcols].to_excel(excel_writer,sheet_name='meisai',index=False)
             excel_writer.save()
 
 
