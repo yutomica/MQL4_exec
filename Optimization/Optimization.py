@@ -97,9 +97,9 @@ print("  - From "+Time_STR+" To "+Time_END)
 for t in TestPeriods:
     print(t)
 print()
-result_tbl = pd.DataFrame()
 for sym in Symbols:
         for trm in Terms:
+            result_tbl = pd.DataFrame()
             for v in TestPeriods:
                 print(' -- '+v[0]+'-'+v[1]+' '+sym+' '+trm)
                 report_path = 'tester\\tmpdir\\RESULT-OPT-'+sym+'-'+v[1]+'-'+trm+'.html'
