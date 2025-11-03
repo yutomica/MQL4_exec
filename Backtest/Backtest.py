@@ -22,6 +22,8 @@ from STReportReader import BacktestReport
 
 # 入力パラメータ
 EA = sys.argv[1]
+Time_STR = sys.argv[2]
+Time_END = sys.argv[3]
 
 # ディレクトリ設定
 setting = configparser.ConfigParser()
@@ -41,8 +43,6 @@ try:
     testmodel = eval(inifile.get(EA,'testmodel'))
     Terms = eval(inifile.get(EA,'Terms')) # ('M1','M5','M15','M30','H1','H4','D1')
     Symbols = eval(inifile.get(EA,'Symbols'))
-    Time_STR = eval(inifile.get(EA,'Time_STR'))
-    Time_END = eval(inifile.get(EA,'Time_END'))
 except:
     print('Input Error !!')
     sys.exit()
