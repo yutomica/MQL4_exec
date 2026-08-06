@@ -10,7 +10,6 @@ import sys
 import os
 import subprocess
 import shutil
-from distutils.dir_util import copy_tree
 from datetime import datetime
 from datetime import timedelta
 import time
@@ -31,11 +30,13 @@ EA = sys.argv[1]
 setting = configparser.ConfigParser()
 setting.read('../utils/setting.conf')
 MT4_path = setting.get('setting','MT4_path')
+MT4_path_wsl = subprocess.check_output(['wslpath', '-u', MT4_path], text=True).strip().rstrip('/') + '/'
 terminal = setting.get('setting','terminal')
 path_output = setting.get('setting','path_output')
+path_output = subprocess.check_output(['wslpath', '-u', path_output], text=True).strip().rstrip('/') + '/'
 if not os.path.exists(path_output+'OPT_'+EA): os.mkdir(path_output +'OPT_'+EA)
 path_output = path_output +'OPT_'+EA
-if not os.path.exists(MT4_path+'tmpdir'): os.mkdir(MT4_path+'tmpdir')
+if not os.path.exists(MT4_path_wsl+'tmpdir'): os.mkdir(MT4_path_wsl+'tmpdir')
 
 
 ## configからテスト対象を読み込む
@@ -66,13 +67,13 @@ while dd <= datetime.strptime(Time_END,'%Y.%m.%d'):
 
 
 ## レポート格納ディレクトリ作成
-if not os.path.exists(MT4_path+'tmpdir'):
-    os.mkdir(MT4_path+'tmpdir')
-infile = MT4_path+'test_params.txt'
+if not os.path.exists(MT4_path_wsl+'tmpdir'):
+    os.mkdir(MT4_path_wsl+'tmpdir')
+infile = MT4_path_wsl+'test_params.txt'
 
 
 ## 最適化パラメータを特定
-with open(MT4_path + setfile_nm) as f:
+with open(MT4_path_wsl + setfile_nm) as f:
     lines = f.readlines()
 opt_params = list()
 for line in lines:
@@ -107,10 +108,10 @@ for sym in Symbols:
                 f = open(infile,'w')
                 print(param,file=f)
                 f.close()
-                cmd = terminal+" \""+infile+"\""
+                cmd = [subprocess.check_output(['wslpath', '-u', terminal.strip()], text=True).strip(), MT4_path + 'test_params.txt']
                 subprocess.call(cmd)
                 try:
-                    res_summary = OptimizeReport(MT4_path[:-7]+report_path)
+                    res_summary = OptimizeReport(MT4_path_wsl[:-7]+report_path.replace('\\', '/'))
                     _res_tbl = res_summary.result
                     _res_tbl['TestPeriod'] = v[0]+'-'+v[1]
                     _res_tbl['Symbol'] = sym
@@ -119,7 +120,7 @@ for sym in Symbols:
                 except:
                     pass
             # 結果出力
-            excel_writer = pd.ExcelWriter(path_output+"\\OPT_"+EA+"_"+sym+"_"+trm+".xlsx")
+            excel_writer = pd.ExcelWriter(path_output+"/OPT_"+EA+"_"+sym+"_"+trm+".xlsx")
             param_columns = []
             for c in result_tbl.columns:
                 if c.find('P_')!=-1: param_columns.append(c)
@@ -131,7 +132,7 @@ for sym in Symbols:
             summary.index.name = 'idx'
             SharpRatio = result_tbl[opt_params+['損益']].groupby(opt_params).agg(['sum','mean','std']).reset_index()
             SharpRatio = pd.DataFrame(SharpRatio.values,columns=opt_params+[u'損益合計','pl_mean','pl_std'])
-            SharpRatio['SR'] = [x/y for x,y in zip(SharpRatio['pl_mean'],SharpRatio['pl_std'])]
+            SharpRatio['SR'] = [x/y if pd.notna(y) and y != 0 else 0 for x,y in zip(SharpRatio['pl_mean'],SharpRatio['pl_std'])]
             summary = pd.merge(summary,SharpRatio[opt_params+[u'損益合計','SR']],how='inner',on=opt_params)
             items = result_tbl[opt_params+[u'損益',u'総取引数',u'PF',u'期待利得']].groupby(opt_params).agg(['min','mean','max']).reset_index()
             items = pd.DataFrame(items.values,columns=opt_params+[
@@ -145,9 +146,9 @@ for sym in Symbols:
             # - 明細
             outcols = opt_params + ['TestPeriod','Symbol','TimeFrame',u'損益',u'総取引数',u'PF',u'期待利得',u'DD $',u'DD %']
             result_tbl[outcols].to_excel(excel_writer,sheet_name='meisai',index=False)
-            excel_writer.save()
+            excel_writer.close()
 
 
 ## 後処理           
 # copy_tree(MT4_path+'tmpdir',path_output)
-shutil.rmtree(MT4_path+'tmpdir')
+shutil.rmtree(MT4_path_wsl+'tmpdir')

@@ -22,8 +22,8 @@ def timedelta_to_DHM(td):
 # バックテストレポート読み込み（最適化なし）
 class BacktestReport:
     def __init__(self,filepath):
-        source = open(filepath,'r')
-        soup = BeautifulSoup(source,features="html.parser")
+        with open(filepath,'r',encoding='cp932') as source:
+            soup = BeautifulSoup(source,features="html.parser")
         # サマリテーブル読み込み
         sline = soup.findAll("table")[0].findAll("tr")
         self.summary = dict()
@@ -121,7 +121,7 @@ class BacktestReport:
         self.trans['勝敗'] = [np.nan if x==0. else y for x,y in zip(self.trans['損益'],self.trans['勝敗'])]
         self.trans['保有期間'] = self.trans['決済日時'] - self.trans['約定日時']
         self.trans['残高'] = [np.nan if x=='delete' else y for x,y in zip(self.trans['決済種別'],self.trans['残高'])]
-        self.trans['残高'] = self.trans['残高'].fillna(method='ffill')
+        self.trans['残高'] = self.trans['残高'].ffill()
         self.trans['YYYYMM'] = list([datetime.strftime(x,"%Y-%m") for x in self.trans['決済日時']])
         self.trans['YYYY'] = list([datetime.strftime(x,"%Y") for x in self.trans['決済日時']])
         self.trans['H'] = list([datetime.strftime(x,"%H") for x in self.trans['約定日時']])
@@ -130,13 +130,13 @@ class BacktestReport:
     # 年次サマリ
     def trans_y(self):
         trans_y = self.trans.groupby('YYYY').count()[['決済種別']].rename(columns={'決済種別':'取引回数'})
-        trans_y = trans_y.join(self.trans.groupby('YYYY').sum()[['約定']].rename(columns={'約定':'約定回数'}))
+        trans_y = trans_y.join(self.trans.groupby('YYYY').sum(numeric_only=True)[['約定']].rename(columns={'約定':'約定回数'}))
         trans_y = trans_y.join(self.trans[self.trans['勝敗']==1].groupby('YYYY').count()[['約定']].rename(columns={'約定':'勝トレード数'}))
         trans_y = trans_y.join(self.trans[self.trans['勝敗']==0].groupby('YYYY').count()[['約定']].rename(columns={'約定':'負トレード数'}))
-        trans_y = trans_y.join(self.trans.groupby('YYYY').mean()[['勝敗']].rename(columns={'勝敗':'勝率'}))
-        trans_y = trans_y.join(self.trans.groupby('YYYY').sum()[['損益(pips)']])
-        trans_y = trans_y.join(self.trans[self.trans['勝敗']==1].groupby('YYYY').mean()[['損益(pips)']].rename(columns={'損益(pips)':'平均利益(pips/trade)'}))
-        trans_y = trans_y.join(self.trans[self.trans['勝敗']==0].groupby('YYYY').mean()[['損益(pips)']].rename(columns={'損益(pips)':'平均損失(pips/trade)'}))
+        trans_y = trans_y.join(self.trans.groupby('YYYY').mean(numeric_only=True)[['勝敗']].rename(columns={'勝敗':'勝率'}))
+        trans_y = trans_y.join(self.trans.groupby('YYYY').sum(numeric_only=True)[['損益(pips)']])
+        trans_y = trans_y.join(self.trans[self.trans['勝敗']==1].groupby('YYYY').mean(numeric_only=True)[['損益(pips)']].rename(columns={'損益(pips)':'平均利益(pips/trade)'}))
+        trans_y = trans_y.join(self.trans[self.trans['勝敗']==0].groupby('YYYY').mean(numeric_only=True)[['損益(pips)']].rename(columns={'損益(pips)':'平均損失(pips/trade)'}))
         trans_y = trans_y.join(self.trans.groupby('YYYY').max()[['保有期間']].rename(columns={'保有期間':'最大保有期間(h)'}))
         trans_y = trans_y.join(self.trans.groupby('YYYY').min()[['保有期間']].rename(columns={'保有期間':'最小保有期間(h)'}))
         trans_y = trans_y.fillna({'勝トレード数':0,'負トレード数':0,'平均利益(pips/trade)':0,'平均損失(pips/trade)':0})
@@ -148,13 +148,13 @@ class BacktestReport:
     # 月次サマリ
     def trans_ym(self):
         trans_ym = self.trans.groupby('YYYYMM').count()[['決済種別']].rename(columns={'決済種別':'取引回数'})
-        trans_ym = trans_ym.join(self.trans.groupby('YYYYMM').sum()[['約定']].rename(columns={'約定':'約定回数'}))
+        trans_ym = trans_ym.join(self.trans.groupby('YYYYMM').sum(numeric_only=True)[['約定']].rename(columns={'約定':'約定回数'}))
         trans_ym = trans_ym.join(self.trans[self.trans['勝敗']==1].groupby('YYYYMM').count()[['約定']].rename(columns={'約定':'勝トレード数'}))
         trans_ym = trans_ym.join(self.trans[self.trans['勝敗']==0].groupby('YYYYMM').count()[['約定']].rename(columns={'約定':'負トレード数'}))
-        trans_ym = trans_ym.join(self.trans.groupby('YYYYMM').mean()[['勝敗']].rename(columns={'勝敗':'勝率'}))
-        trans_ym = trans_ym.join(self.trans.groupby('YYYYMM').sum()[['損益(pips)']])
-        trans_ym = trans_ym.join(self.trans[self.trans['勝敗']==1].groupby('YYYYMM').mean()[['損益(pips)']].rename(columns={'損益(pips)':'平均利益(pips/trade)'}))
-        trans_ym = trans_ym.join(self.trans[self.trans['勝敗']==0].groupby('YYYYMM').mean()[['損益(pips)']].rename(columns={'損益(pips)':'平均損失(pips/trade)'}))
+        trans_ym = trans_ym.join(self.trans.groupby('YYYYMM').mean(numeric_only=True)[['勝敗']].rename(columns={'勝敗':'勝率'}))
+        trans_ym = trans_ym.join(self.trans.groupby('YYYYMM').sum(numeric_only=True)[['損益(pips)']])
+        trans_ym = trans_ym.join(self.trans[self.trans['勝敗']==1].groupby('YYYYMM').mean(numeric_only=True)[['損益(pips)']].rename(columns={'損益(pips)':'平均利益(pips/trade)'}))
+        trans_ym = trans_ym.join(self.trans[self.trans['勝敗']==0].groupby('YYYYMM').mean(numeric_only=True)[['損益(pips)']].rename(columns={'損益(pips)':'平均損失(pips/trade)'}))
         trans_ym = trans_ym.join(self.trans.groupby('YYYYMM').max()[['保有期間']].rename(columns={'保有期間':'最大保有期間(h)'}))
         trans_ym = trans_ym.join(self.trans.groupby('YYYYMM').min()[['保有期間']].rename(columns={'保有期間':'最小保有期間(h)'}))
         trans_ym = trans_ym.fillna({'勝トレード数':0,'負トレード数':0,'平均利益(pips/trade)':0,'平均損失(pips/trade)':0})
@@ -166,13 +166,13 @@ class BacktestReport:
     # En時間帯別サマリ
     def trans_h(self):
         trans_h = self.trans.groupby('H').count()[['決済種別']].rename(columns={'決済種別':'取引回数'})
-        trans_h = trans_h.join(self.trans.groupby('H').sum()[['約定']].rename(columns={'約定':'約定回数'}))
+        trans_h = trans_h.join(self.trans.groupby('H').sum(numeric_only=True)[['約定']].rename(columns={'約定':'約定回数'}))
         trans_h = trans_h.join(self.trans[self.trans['勝敗']==1].groupby('H').count()[['約定']].rename(columns={'約定':'勝トレード数'}))
         trans_h = trans_h.join(self.trans[self.trans['勝敗']==0].groupby('H').count()[['約定']].rename(columns={'約定':'負トレード数'}))
-        trans_h = trans_h.join(self.trans.groupby('H').mean()[['勝敗']].rename(columns={'勝敗':'勝率'}))
-        trans_h = trans_h.join(self.trans.groupby('H').sum()[['損益(pips)']])
-        trans_h = trans_h.join(self.trans[self.trans['勝敗']==1].groupby('H').mean()[['損益(pips)']].rename(columns={'損益(pips)':'平均利益(pips/trade)'}))
-        trans_h = trans_h.join(self.trans[self.trans['勝敗']==0].groupby('H').mean()[['損益(pips)']].rename(columns={'損益(pips)':'平均損失(pips/trade)'}))
+        trans_h = trans_h.join(self.trans.groupby('H').mean(numeric_only=True)[['勝敗']].rename(columns={'勝敗':'勝率'}))
+        trans_h = trans_h.join(self.trans.groupby('H').sum(numeric_only=True)[['損益(pips)']])
+        trans_h = trans_h.join(self.trans[self.trans['勝敗']==1].groupby('H').mean(numeric_only=True)[['損益(pips)']].rename(columns={'損益(pips)':'平均利益(pips/trade)'}))
+        trans_h = trans_h.join(self.trans[self.trans['勝敗']==0].groupby('H').mean(numeric_only=True)[['損益(pips)']].rename(columns={'損益(pips)':'平均損失(pips/trade)'}))
         trans_h = trans_h.join(self.trans.groupby('H').max()[['保有期間']].rename(columns={'保有期間':'最大保有期間(h)'}))
         trans_h = trans_h.join(self.trans.groupby('H').min()[['保有期間']].rename(columns={'保有期間':'最小保有期間(h)'}))
         trans_h = trans_h.fillna({'勝トレード数':0,'負トレード数':0,'平均利益(pips/trade)':0,'平均損失(pips/trade)':0})
@@ -184,13 +184,13 @@ class BacktestReport:
     # En曜日別サマリ
     def trans_wd(self):
         trans_wd = self.trans.groupby('WD').count()[['決済種別']].rename(columns={'決済種別':'取引回数'})
-        trans_wd = trans_wd.join(self.trans.groupby('WD').sum()[['約定']].rename(columns={'約定':'約定回数'}))
+        trans_wd = trans_wd.join(self.trans.groupby('WD').sum(numeric_only=True)[['約定']].rename(columns={'約定':'約定回数'}))
         trans_wd = trans_wd.join(self.trans[self.trans['勝敗']==1].groupby('WD').count()[['約定']].rename(columns={'約定':'勝トレード数'}))
         trans_wd = trans_wd.join(self.trans[self.trans['勝敗']==0].groupby('WD').count()[['約定']].rename(columns={'約定':'負トレード数'}))
-        trans_wd = trans_wd.join(self.trans.groupby('WD').mean()[['勝敗']].rename(columns={'勝敗':'勝率'}))
-        trans_wd = trans_wd.join(self.trans.groupby('WD').sum()[['損益(pips)']])
-        trans_wd = trans_wd.join(self.trans[self.trans['勝敗']==1].groupby('WD').mean()[['損益(pips)']].rename(columns={'損益(pips)':'平均利益(pips/trade)'}))
-        trans_wd = trans_wd.join(self.trans[self.trans['勝敗']==0].groupby('WD').mean()[['損益(pips)']].rename(columns={'損益(pips)':'平均損失(pips/trade)'}))
+        trans_wd = trans_wd.join(self.trans.groupby('WD').mean(numeric_only=True)[['勝敗']].rename(columns={'勝敗':'勝率'}))
+        trans_wd = trans_wd.join(self.trans.groupby('WD').sum(numeric_only=True)[['損益(pips)']])
+        trans_wd = trans_wd.join(self.trans[self.trans['勝敗']==1].groupby('WD').mean(numeric_only=True)[['損益(pips)']].rename(columns={'損益(pips)':'平均利益(pips/trade)'}))
+        trans_wd = trans_wd.join(self.trans[self.trans['勝敗']==0].groupby('WD').mean(numeric_only=True)[['損益(pips)']].rename(columns={'損益(pips)':'平均損失(pips/trade)'}))
         trans_wd = trans_wd.join(self.trans.groupby('WD').max()[['保有期間']].rename(columns={'保有期間':'最大保有期間(h)'}))
         trans_wd = trans_wd.join(self.trans.groupby('WD').min()[['保有期間']].rename(columns={'保有期間':'最小保有期間(h)'}))
         trans_wd = trans_wd.fillna({'勝トレード数':0,'負トレード数':0,'平均利益(pips/trade)':0,'平均損失(pips/trade)':0})
@@ -203,8 +203,8 @@ class BacktestReport:
 # バックテストレポート読み込み（最適化）
 class OptimizeReport:
     def __init__(self,filepath):
-        source = open(filepath,'r')
-        soup = BeautifulSoup(source,features="html.parser")
+        with open(filepath,'r',encoding='cp932') as source:
+            soup = BeautifulSoup(source,features="html.parser")
         # サマリテーブル読み込み
         sline = soup.findAll("table")[0].findAll("tr")
         self.summary = {}
