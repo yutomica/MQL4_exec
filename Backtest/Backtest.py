@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 from ast import literal_eval
+from datetime import datetime
 from pathlib import Path, PureWindowsPath
 
 import pandas as pd
@@ -72,16 +73,29 @@ for trm in Terms:
         if any(name in ('', '.', '..') for name in (symbol_name, term_name)):
             raise ValueError('通貨ペアと時間足には有効な名称を指定してください')
 
+        run_id = f'{datetime.now().strftime("%Y%m%dT%H%M%S%f")}_{symbol_name}_{term_name}_{period_name}'
+        run_output = path_output / run_id
+        input_dir = run_output / 'input'
+        raw_dir = run_output / 'raw'
+        input_dir.mkdir(parents=True)
+        raw_dir.mkdir()
+
         excel_path = path_output / f'Backtest_{symbol_name}_{term_name}_{period_name}.xlsx'
         report_name = f'RESULT-{symbol_name}-{time_end_name}-{term_name}.html'
         report_path_windows = str(PureWindowsPath('tester', 'tmpdir', report_name))
         param = set_inputfile(EA, sym, trm, testmodel, 'false', Time_STR, Time_END, report_path_windows)
         with infile.open('w') as f:
             print(param, file=f)
+        shutil.copy2(infile, input_dir / 'test_params.txt')
 
         print(subprocess.list2cmdline([str(terminal_windows), infile_windows]))
         subprocess.call([str(terminal), infile_windows])
-        report = BacktestReport(tmpdir / report_name)
+        raw_report = raw_dir / 'report.html'
+        shutil.copy2(tmpdir / report_name, raw_report)
+        report_gif = tmpdir / Path(report_name).with_suffix('.gif')
+        if report_gif.is_file():
+            shutil.copy2(report_gif, raw_dir / 'report.gif')
+        report = BacktestReport(raw_report)
         with pd.ExcelWriter(excel_path) as excel_writer:
             pd.DataFrame(report.summary, index=['val']).T.to_excel(excel_writer, sheet_name='サマリ')
             report.trans.to_excel(excel_writer, sheet_name='trans')
@@ -89,6 +103,18 @@ for trm in Terms:
             report.trans_ym().to_excel(excel_writer, sheet_name='ym')
             # report.trans_h().to_excel(excel_writer, sheet_name='h')
             # report.trans_wd().to_excel(excel_writer, sheet_name='wd')
+        report.export(run_output, {
+            'run_id': run_id,
+            'ea': EA,
+            'symbol': sym,
+            'timeframe': trm,
+            'test_model': testmodel,
+            'time_start': Time_STR,
+            'time_end': Time_END,
+            'time_basis': 'mt4_server_time',
+            'timezone': None,
+        })
+        del report
 
 shutil.copytree(tmpdir, path_output, dirs_exist_ok=True)
-shutil.rmtree(tmpdir)
+# shutil.rmtree(tmpdir)

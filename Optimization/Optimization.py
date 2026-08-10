@@ -99,8 +99,8 @@ for t in TestPeriods:
     print(t)
 print()
 for sym in Symbols:
-        for trm in Terms:
-            result_tbl = pd.DataFrame()
+    for trm in Terms:
+            result_tbl = []
             for v in TestPeriods:
                 print(' -- '+v[0]+'-'+v[1]+' '+sym+' '+trm)
                 report_path = 'tester\\tmpdir\\RESULT-OPT-'+sym+'-'+v[1]+'-'+trm+'.html'
@@ -116,9 +116,10 @@ for sym in Symbols:
                     _res_tbl['TestPeriod'] = v[0]+'-'+v[1]
                     _res_tbl['Symbol'] = sym
                     _res_tbl['TimeFrame'] = trm                        
-                    result_tbl = pd.concat([result_tbl,_res_tbl])
+                    result_tbl.append(_res_tbl)
                 except:
                     pass
+            result_tbl = pd.concat(result_tbl, ignore_index=True)
             # 結果出力
             excel_writer = pd.ExcelWriter(path_output+"/OPT_"+EA+"_"+sym+"_"+trm+".xlsx")
             param_columns = []
